@@ -1,4 +1,4 @@
-**基于Mysql&php实现简易汽车拍卖系统
+#基于Mysql&php实现简易汽车拍卖系统
 1、建立数据库和表格
 使用VSCode的MySQL Shell for VS Code的插件，连接mysql然后建立汽车拍卖数据库AutoAuction。
 建立Customers表格，存储客户信息。
