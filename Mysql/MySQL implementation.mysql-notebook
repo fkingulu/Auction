@@ -1,0 +1,3166 @@
+{
+    "type": "MySQLNotebook",
+    "version": "1.0",
+    "caption": "DB Notebook",
+    "content": "\\about\nUSE autoauction;\nDELIMITER //\nCREATE PROCEDURE MaxBid()\nBEGIN\n    SELECT\n        B.AutoID,\n        V.Location,\n        V.Year,\n        CONCAT('$', FORMAT(MAX(B.BidPrice), 2)) AS `Maximum Bid`\n    FROM\n        Bids B\n    INNER JOIN\n        Vehicles V ON B.AutoID = V.AutoID\n    GROUP BY\n        B.AutoID, V.Location, V.Year\n    ORDER BY\n        V.Year DESC;\nEND //\nDELIMITER ;\n\nCALL MaxBid();\nDELIMITER //\nCREATE PROCEDURE AvailableFords()\nBEGIN\n    SELECT\n        AutoID,\n        Location,\n        Year,\n        Type,\n        Mileage,\n        Vin\n    FROM\n        Vehicles\n    WHERE\n        Type LIKE 'FORD%'\n    ORDER BY\n        Year DESC;\nEND //\nDELIMITER ;\n\nCALL AvailableFords();\n\n\n\nDELIMITER //\nCREATE PROCEDURE WinnersAndLosers(IN inputAutoID INT)\nBEGIN\n    SELECT\n        V.AutoID,\n        C.LastName,\n        CONCAT('$', FORMAT(B.BidPrice, 2)) AS Bid,\n        CONCAT('$', FORMAT(\n            (SELECT MAX(BidPrice) FROM Bids WHERE AutoID = inputAutoID), 2)\n        ) AS `Maximum Bid`,\n        CASE WHEN B.BidPrice = (\n            SELECT MAX(BidPrice) FROM Bids WHERE AutoID = inputAutoID\n        ) THEN 'Yes' ELSE 'No' END AS `Won Bid?`\n    FROM\n        Bids B\n    INNER JOIN\n        Customers C ON B.CustomerID = C.CustomerID\n    RIGHT JOIN\n        Vehicles V ON B.AutoID = V.AutoID\n    WHERE\n        V.AutoID = inputAutoID;\nEND //\nDELIMITER ;\nCALL WinnersAndLosers(1); \nCALL WinnersAndLosers(15); \nCALL WinnersAndLosers(5); \nDELIMITER //\nCREATE PROCEDURE AvailableAuto()\nBEGIN\n    SELECT\n        AutoID,\n        Location,\n        Year,\n        Type,\n        Mileage,\n        Vin\n    FROM\n        Vehicles\n    ORDER BY\n        Year DESC;\nEND //\nDELIMITER ;\nCALL AvailableAuto();\nDELIMITER //\nCREATE PROCEDURE add_customer(\n    IN inputCustomerID INT,\n    IN inputLastName VARCHAR(50),\n    IN inputFirstName VARCHAR(50),\n    IN inputAddress VARCHAR(255),\n    IN inputCity VARCHAR(50),\n    IN inputState VARCHAR(2),\n    IN inputZip INT,\n    IN inputTelephone VARCHAR(15),\n    IN inputEmail VARCHAR(100)\n)\nBEGIN\n    INSERT INTO Customers (\n        CustomerID,\n        LastName,\n        FirstName,\n        Address,\n        City,\n        State,\n        Zip,\n        Telephone,\n        Email\n    ) VALUES (\n        inputCustomerID,\n        inputLastName,\n        inputFirstName,\n        inputAddress,\n        inputCity,\n        inputState,\n        inputZip,\n        inputTelephone,\n        inputEmail\n    );\nEND //\nDELIMITER ;\n\nUSE autoauction\nDELIMITER //\nCREATE TRIGGER AutoBidTrigger\nAFTER INSERT ON Customers\nFOR EACH ROW\nBEGIN\n    DECLARE randomAutoID INT;\n    DECLARE randomDate DATE;\n    DECLARE randomPrice DECIMAL(10, 2);\n\n    SET randomAutoID = FLOOR(1 + RAND() * 25);\n    SET randomDate = DATE_ADD('2010-01-01', INTERVAL FLOOR(RAND() * 5023) DAY);\n    SET randomPrice = 1000 + (RAND() * 19000);\n\n    INSERT INTO Bids (CustomerID, AutoID, BidDate, BidPrice)\n    VALUES (NEW.CustomerID, randomAutoID, randomDate, randomPrice);\nEND //\nDELIMITER ;\nCALL add_customer(111, 'Smith', 'John', '123 Main St', 'Anytown', 'CA', '12345', '(123) 456-7890', 'john@example.com');\nSELECT * FROM customers;\nDELIMITER //\nCREATE PROCEDURE add_available_auto(\n    IN inputAutoID INT,\n    IN inputLocation VARCHAR(255),\n    IN inputYear INT,\n    IN inputType VARCHAR(255),\n    IN inputMileage INT,\n    IN inputVin VARCHAR(255)\n)\nBEGIN\n    INSERT INTO Vehicles (\n        AutoID,\n        Location,\n        Year,\n        Type,\n        Mileage,\n        Vin\n    ) VALUES (\n        inputAutoID,\n        inputLocation,\n        inputYear,\n        inputType,\n        inputMileage,\n        inputVin\n    );\nEND //\nDELIMITER ;\n\nCALL add_available_auto(26, 'D123', 2023, 'TOYOTA CAMRY', 5, '1234567890');\nUSE autoauction;\nSELECT * FROM bids;\n\nDROP TRIGGER IF EXISTS check_bid;\nDELIMITER //\n\nCREATE TRIGGER check_bid\nBEFORE INSERT ON bids\nFOR EACH ROW\nBEGIN\n    DECLARE valid_term INT;\n    DECLARE this_date DATE;\n    DECLARE earliest_date DATE;\n    DECLARE this_price INT ;\n    DECLARE biggest_price INT ;\n    DECLARE customer_exists INT;\n    DECLARE auto_exists INT; -- 用于检查CustomerID是否存在的变量\n    \n    SET valid_term = 30;\n    SET this_date = NEW.BidDate;\n    SET this_price = NEW.BidPrice;\n\n    SELECT COUNT(*) INTO auto_exists\n    FROM vehicles\n    WHERE AutoID = NEW.AutoID;\n   \n    SELECT COUNT(*) INTO customer_exists\n    FROM customers\n    WHERE CustomerID = NEW.CustomerID;\n\n    IF customer_exists = 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'Customer not found';\n    ELSEIF auto_exists = 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'Auto not found';\n    ELSE\n        -- 如果CustomerID存在，继续执行其他检查\n        SELECT MIN(BidDate) INTO earliest_date\n        FROM bids\n        WHERE AutoID = NEW.AutoID;\n\n        SELECT MAX(BidPrice) INTO biggest_price\n        FROM bids\n        WHERE AutoID = NEW.AutoID;\n\n        IF earliest_date IS NOT NULL AND DATEDIFF(this_date, earliest_date) > valid_term THEN\n            SIGNAL SQLSTATE '45000'\n            SET MESSAGE_TEXT = 'Bid is overdue';\n        END IF;\n\n        IF this_price < biggest_price THEN\n            SIGNAL SQLSTATE '45000'\n            SET MESSAGE_TEXT = 'Price is lower than the highest';\n        END IF;\n    END IF;\nEND;\n//\nDELIMITER ;\n\nDROP TRIGGER IF EXISTS BidCheck;\nUSE autoauction;\n\nUSE autoauction\nDELIMITER //\nCREATE TRIGGER AutoBidTrigger\nAFTER INSERT ON Customers\nFOR EACH ROW\nBEGIN\n    DECLARE randomAutoID INT;\n    DECLARE randomDate DATE;\n    DECLARE randomPrice DECIMAL(10, 2);\n\n    SET randomAutoID = FLOOR(1 + RAND() * 25);\n    SET randomDate = DATE_ADD('2009-01-01', INTERVAL FLOOR(RAND() * 45) DAY);\n    SET randomPrice = 1000 + (RAND() * 19000);\n\n    INSERT INTO Bids (CustomerID, AutoID, BidDate, BidPrice)\n    VALUES (NEW.CustomerID, randomAutoID, randomDate, randomPrice);\nEND //\nDELIMITER ;\nINSERT INTO bids (CustomerID, AutoID, BidDate, BidPrice)\nVALUE (112, 1, '2009-01-25', 10000)\nINSERT INTO bids (CustomerID, AutoID, BidDate, BidPrice)\nVALUE (119, 1, '2009-01-25', 10000)\nDROP PROCEDURE IF EXISTS GetAutoIDs;\nDELIMITER //\nCREATE PROCEDURE GetAutoIDs()\nBEGIN\n    CREATE TEMPORARY TABLE IF NOT EXISTS temp_auto_ids (AutoID INT);\n\n    INSERT INTO temp_auto_ids\n    SELECT AutoID\n    FROM bids\n    WHERE ABS(DATEDIFF(NEW.BidDate, BidDate)) > 30;\n\n    -- SELECT * FROM temp_auto_ids;\n    DROP TEMPORARY TABLE IF EXISTS temp_auto_ids;\nEND;\n\nDROP TRIGGER IF EXISTS win_check;\nDELIMITER //\n\nCREATE TRIGGER win_check\nAFTER INSERT ON bids\nFOR EACH ROW\nBEGIN\n    DECLARE valid_term INT;\n    DECLARE this_date DATE;\n\n    SET valid_term = 30;\n    SET this_date = NEW.BidDate; -- NEW指允许访问触发行的值\n\n    IF EXISTS (\n        SELECT 1\n        FROM bids\n        WHERE DATEDIFF(this_date, BidDate) > valid_term\n    ) THEN\n        SELECT *\n        FROM bids\n        WHERE DATEDIFF(this_date, BidDate) > valid_term;\n        -- 或者根据需要进行其他操作，比如将满足条件的行插入到另一个表中等\n    END IF;\nEND;\n//\n\nDELIMITER ;\nDELETE FROM bids\nWHERE BidDate='2009-02-07';\nINSERT INTO bids (CustomerID, AutoID, BidDate, BidPrice)\nVALUE (112, 25, '2009-02-07', 10000);\nSELECT * FROM bids;\nSELECT * FROM customers;\nDELIMITER //\n\nCREATE TRIGGER check_customerID_exists\nBEFORE INSERT ON customers\nFOR EACH ROW\nBEGIN\n    DECLARE customer_exists INT;\n\n    -- 检查新插入的 CustomerID 是否已经存在\n    SELECT COUNT(*) INTO customer_exists\n    FROM customers\n    WHERE CustomerID = NEW.CustomerID;\n\n    IF customer_exists > 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'CustomerID already exists';\n    END IF;\nEND;\n//\n\nDELIMITER ;\n\nINSERT INTO Customers (\n        CustomerID,\n        LastName,\n        FirstName,\n        Address,\n        City,\n        State,\n        Zip,\n        Telephone,\n        Email\n    ) VALUES (111, 'Smith', 'John', '123 Main St', 'Anytown', 'CA', '12345', '(123) 456-7890', 'john@example.com');\nSHOW TRIGGERS;\nDROP TRIGGER AutoBidTrigger;\nDELETE FROM customers WHERE CustomerID = 114;\n",
+    "options": {
+        "tabSize": 4,
+        "insertSpaces": true,
+        "indentSize": 4,
+        "defaultEOL": "CRLF",
+        "trimAutoWhitespace": true
+    },
+    "viewState": {
+        "cursorState": [
+            {
+                "inSelectionMode": false,
+                "selectionStart": {
+                    "lineNumber": 344,
+                    "column": 1
+                },
+                "position": {
+                    "lineNumber": 344,
+                    "column": 1
+                }
+            }
+        ],
+        "viewState": {
+            "scrollLeft": 0,
+            "firstPosition": {
+                "lineNumber": 341,
+                "column": 1
+            },
+            "firstPositionDeltaTop": 2
+        },
+        "contributionsState": {
+            "editor.contrib.folding": {},
+            "editor.contrib.wordHighlighter": false
+        }
+    },
+    "contexts": [
+        {
+            "state": {
+                "start": 1,
+                "end": 1,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 2,
+                            "content": "Welcome to the MySQL Shell - DB Notebook.\n\nPress Ctrl+Enter to execute the code block.\n\nExecute \\sql to switch to SQL, \\js to JavaScript and \\ts to TypeScript mode.\nExecute \\help or \\? for help;",
+                            "language": "ansi"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 6
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 2,
+                "end": 21,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "55747d57-9200-466c-b256-54bf3fa04e0f",
+                            "content": "OK, 0 records retrieved in 0s"
+                        },
+                        {
+                            "type": 4,
+                            "index": 2,
+                            "resultId": "f2c833c7-7015-4b92-f079-8f606339f7cb",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 16
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 16,
+                            "length": 13
+                        },
+                        "contentStart": 17,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 29,
+                            "length": 334
+                        },
+                        "contentStart": 30,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 363,
+                            "length": 12
+                        },
+                        "contentStart": 364,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 375,
+                            "length": 1
+                        },
+                        "contentStart": 374,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 22,
+                "end": 22,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "2d8c5950-dbb6-42a6-9df7-fe8566df581e",
+                        "0d5810cd-006d-4dd0-ce67-97d0328a9d54"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 14
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 14,
+                            "length": 0
+                        },
+                        "contentStart": 13,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "2d8c5950-dbb6-42a6-9df7-fe8566df581e",
+                    "rows": [
+                        {
+                            "0": 1,
+                            "1": "O765",
+                            "2": 2007,
+                            "3": "$10,200.00"
+                        },
+                        {
+                            "0": 2,
+                            "1": "C173",
+                            "2": 2007,
+                            "3": "$7,100.00"
+                        },
+                        {
+                            "0": 5,
+                            "1": "H156",
+                            "2": 2006,
+                            "3": "$7,800.00"
+                        },
+                        {
+                            "0": 3,
+                            "1": "L234",
+                            "2": 2006,
+                            "3": "$7,000.00"
+                        },
+                        {
+                            "0": 10,
+                            "1": "L211",
+                            "2": 2005,
+                            "3": "$7,250.00"
+                        },
+                        {
+                            "0": 13,
+                            "1": "S126",
+                            "2": 2004,
+                            "3": "$8,800.00"
+                        },
+                        {
+                            "0": 17,
+                            "1": "W066",
+                            "2": 2003,
+                            "3": "$9,700.00"
+                        },
+                        {
+                            "0": 21,
+                            "1": "S195",
+                            "2": 2002,
+                            "3": "$7,300.00"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Location",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Year",
+                            "field": "2",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Maximum Bid",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 8 records retrieved in 3.417ms"
+                    },
+                    "totalRowCount": 8,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 0,
+                    "sql": "CALL MaxBid()"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "0d5810cd-006d-4dd0-ce67-97d0328a9d54",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 3.417ms",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 1,
+                    "sql": "CALL MaxBid()"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 23,
+                "end": 40,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 1,
+                            "content": "MySQL Error (1304): ClassicSession.run_sql: PROCEDURE AvailableFords already exists",
+                            "language": "ansi"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 0,
+                            "length": 12
+                        },
+                        "contentStart": 0,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 12,
+                            "length": 243
+                        },
+                        "contentStart": 13,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 255,
+                            "length": 12
+                        },
+                        "contentStart": 256,
+                        "state": 4
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 41,
+                "end": 41,
+                "language": "mysql",
+                "currentHeight": 180,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 0
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 42,
+                "end": 44,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "a8206600-fde0-4048-8797-1309fc5d8711",
+                        "7380c15a-26d4-4191-f3ca-350ddaf91e9c"
+                    ]
+                },
+                "currentHeight": 270,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 22
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 22,
+                            "length": 2
+                        },
+                        "contentStart": 21,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "a8206600-fde0-4048-8797-1309fc5d8711",
+                    "rows": [
+                        {
+                            "0": 3,
+                            "1": "L234",
+                            "2": 2006,
+                            "3": "FORD F150 XL 6A ASBTW",
+                            "4": 22,
+                            "5": "1FTRF12216NB66324"
+                        },
+                        {
+                            "0": 9,
+                            "1": "C211",
+                            "2": 2005,
+                            "3": "FORD FOCUS ZX4 4A ASB",
+                            "4": 45,
+                            "5": "1FAFP34N45W254872"
+                        },
+                        {
+                            "0": 10,
+                            "1": "L211",
+                            "2": 2005,
+                            "3": "FORD F150 XL 4X2 6M ASBTW",
+                            "4": 49,
+                            "5": "1FTRF122X5NB81984"
+                        },
+                        {
+                            "0": 12,
+                            "1": "B196",
+                            "2": 2004,
+                            "3": "FORD F150 OFFROAD 4X4 XCAB 8",
+                            "4": 60,
+                            "5": "1FTPX14504FA15423"
+                        },
+                        {
+                            "0": 23,
+                            "1": "Z095",
+                            "2": 2002,
+                            "3": "FORD EXPLORER EB 4X4 8A ASBW",
+                            "4": 82,
+                            "5": "1FMDU74W02UB72009"
+                        },
+                        {
+                            "0": 24,
+                            "1": "D135",
+                            "2": 2002,
+                            "3": "FORD EXPLORER XLS 4X4 6A ASB",
+                            "4": 110,
+                            "5": "1FMZU72E42UA13223"
+                        },
+                        {
+                            "0": 25,
+                            "1": "F195",
+                            "2": 2002,
+                            "3": "FORD F150XLT SPORT 4X2 6A A",
+                            "4": 81,
+                            "5": "1FTRX17282NA98776"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Location",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Year",
+                            "field": "2",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Type",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Mileage",
+                            "field": "4",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Vin",
+                            "field": "5",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 7 records retrieved in 4ms"
+                    },
+                    "totalRowCount": 7,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 0,
+                    "sql": "CALL AvailableFords()"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "7380c15a-26d4-4191-f3ca-350ddaf91e9c",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 4ms",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 1,
+                    "sql": "CALL AvailableFords()"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 45,
+                "end": 68,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 1,
+                            "resultId": "5f683a23-5048-4c6d-8aa1-14b9aa89e2df",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 0,
+                            "length": 13
+                        },
+                        "contentStart": 1,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 13,
+                            "length": 640
+                        },
+                        "contentStart": 14,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 653,
+                            "length": 12
+                        },
+                        "contentStart": 654,
+                        "state": 4
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 69,
+                "end": 69,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "11a8e397-d4dd-42d5-a765-3a433ee4b9dc",
+                        "4463494d-00fb-420e-a195-ab40a9c6fa7b"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 25
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 25,
+                            "length": 1
+                        },
+                        "contentStart": 24,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "11a8e397-d4dd-42d5-a765-3a433ee4b9dc",
+                    "rows": [
+                        {
+                            "0": 1,
+                            "1": "Burham",
+                            "2": "$8,000.00",
+                            "3": "$10,200.00",
+                            "4": "No"
+                        },
+                        {
+                            "0": 1,
+                            "1": "Burham",
+                            "2": "$10,200.00",
+                            "3": "$10,200.00",
+                            "4": "Yes"
+                        },
+                        {
+                            "0": 1,
+                            "1": "Webster",
+                            "2": "$8,500.00",
+                            "3": "$10,200.00",
+                            "4": "No"
+                        },
+                        {
+                            "0": 1,
+                            "1": "Seever",
+                            "2": "$9,500.00",
+                            "3": "$10,200.00",
+                            "4": "No"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "LastName",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Bid",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Maximum Bid",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Won Bid?",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 4 records retrieved in 0s"
+                    },
+                    "totalRowCount": 4,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 0,
+                    "sql": "CALL WinnersAndLosers(1)"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "4463494d-00fb-420e-a195-ab40a9c6fa7b",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 0s",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 1,
+                    "sql": "CALL WinnersAndLosers(1)"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 70,
+                "end": 70,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "dd22aa85-1016-4063-d035-ba40a116b9e4",
+                        "bc83d983-7f3a-47e6-9a7a-cf2ae0571ed8"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 26
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 26,
+                            "length": 1
+                        },
+                        "contentStart": 25,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "dd22aa85-1016-4063-d035-ba40a116b9e4",
+                    "rows": [
+                        {
+                            "0": 15,
+                            "1": null,
+                            "2": null,
+                            "3": null,
+                            "4": "No"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "LastName",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Bid",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Maximum Bid",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Won Bid?",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 1 record retrieved in 13.743ms"
+                    },
+                    "totalRowCount": 1,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 0,
+                    "sql": "CALL WinnersAndLosers(15)"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "bc83d983-7f3a-47e6-9a7a-cf2ae0571ed8",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 13.743ms",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 1,
+                    "sql": "CALL WinnersAndLosers(15)"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 71,
+                "end": 71,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "1eadb980-5833-40b0-aa27-ac16aa11e254",
+                        "9516343a-1994-47a3-82f9-a8e842dbe1a5"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 25
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 25,
+                            "length": 1
+                        },
+                        "contentStart": 24,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "1eadb980-5833-40b0-aa27-ac16aa11e254",
+                    "rows": [
+                        {
+                            "0": 5,
+                            "1": "Doorey",
+                            "2": "$7,800.00",
+                            "3": "$7,800.00",
+                            "4": "Yes"
+                        },
+                        {
+                            "0": 5,
+                            "1": "Meartz",
+                            "2": "$7,200.00",
+                            "3": "$7,800.00",
+                            "4": "No"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "LastName",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Bid",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Maximum Bid",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Won Bid?",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 2 records retrieved in 0s"
+                    },
+                    "totalRowCount": 2,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 0,
+                    "sql": "CALL WinnersAndLosers(5)"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "9516343a-1994-47a3-82f9-a8e842dbe1a5",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 0s",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 1,
+                    "sql": "CALL WinnersAndLosers(5)"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 72,
+                "end": 87,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 1,
+                            "resultId": "b8545bbc-e6e8-4dae-ac25-2b659da1481b",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 0,
+                            "length": 12
+                        },
+                        "contentStart": 0,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 12,
+                            "length": 206
+                        },
+                        "contentStart": 13,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 218,
+                            "length": 12
+                        },
+                        "contentStart": 219,
+                        "state": 4
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 88,
+                "end": 88,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "72f5948e-6cf3-44a2-908d-4c24ab1499f8",
+                        "2f11b697-4c32-41a6-fe82-5f6d710175ff"
+                    ]
+                },
+                "currentHeight": 36,
+                "currentSet": 1,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 21
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 21,
+                            "length": 0
+                        },
+                        "contentStart": 20,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "72f5948e-6cf3-44a2-908d-4c24ab1499f8",
+                    "rows": [
+                        {
+                            "0": 1,
+                            "1": "O765",
+                            "2": 2007,
+                            "3": "CHEV SUBURBAN LT 4X4 8A NAV",
+                            "4": 23,
+                            "5": "1GNFK16307J157555"
+                        },
+                        {
+                            "0": 2,
+                            "1": "C173",
+                            "2": 2007,
+                            "3": "CHEV HHR 4A ASBWLTWCCSR",
+                            "4": 7,
+                            "5": "3GNDA33PX7S5221231"
+                        },
+                        {
+                            "0": 3,
+                            "1": "L234",
+                            "2": 2006,
+                            "3": "FORD F150 XL 6A ASBTW",
+                            "4": 22,
+                            "5": "1FTRF12216NB66324"
+                        },
+                        {
+                            "0": 4,
+                            "1": "B155",
+                            "2": 2006,
+                            "3": "CHEV TAHOE 4X4 8A ASBWLTWCC",
+                            "4": 48,
+                            "5": "1GNEK13T26R105776"
+                        },
+                        {
+                            "0": 5,
+                            "1": "H156",
+                            "2": 2006,
+                            "3": "PONTIAC G6 4A ASBWLTWCC",
+                            "4": 19,
+                            "5": "1G2ZF55B864232654"
+                        },
+                        {
+                            "0": 6,
+                            "1": "B211",
+                            "2": 2005,
+                            "3": "KIA OPTIMA LX 4A ASBWLTWCC",
+                            "4": 47,
+                            "5": "KNAGD126055385324"
+                        },
+                        {
+                            "0": 7,
+                            "1": "J221",
+                            "2": 2005,
+                            "3": "KIA OPTIMA LX 4A ASBWLTWCC",
+                            "4": 51,
+                            "5": "KNAGD126955392764"
+                        },
+                        {
+                            "0": 8,
+                            "1": "L181",
+                            "2": 2005,
+                            "3": "BMW 330I 6A ASBWLTWCCSR",
+                            "4": 61,
+                            "5": "WBAEV53455KM41874"
+                        },
+                        {
+                            "0": 9,
+                            "1": "C211",
+                            "2": 2005,
+                            "3": "FORD FOCUS ZX4 4A ASB",
+                            "4": 45,
+                            "5": "1FAFP34N45W254872"
+                        },
+                        {
+                            "0": 10,
+                            "1": "L211",
+                            "2": 2005,
+                            "3": "FORD F150 XL 4X2 6M ASBTW",
+                            "4": 49,
+                            "5": "1FTRF122X5NB81984"
+                        },
+                        {
+                            "0": 11,
+                            "1": "D196",
+                            "2": 2005,
+                            "3": "PONTIAC G6 6A ASBWLTWCC",
+                            "4": 43,
+                            "5": "1G2ZG528754159894"
+                        },
+                        {
+                            "0": 12,
+                            "1": "B196",
+                            "2": 2004,
+                            "3": "FORD F150 OFFROAD 4X4 XCAB 8",
+                            "4": 60,
+                            "5": "1FTPX14504FA15423"
+                        },
+                        {
+                            "0": 13,
+                            "1": "S126",
+                            "2": 2004,
+                            "3": "CHEV MALIBU 4A ASBWLTWCC",
+                            "4": 90,
+                            "5": "1G1ND52FX4M505982"
+                        },
+                        {
+                            "0": 14,
+                            "1": "S206",
+                            "2": 2004,
+                            "3": "NISSAN SENTRA SE/R 4M ASBSR",
+                            "4": 41,
+                            "5": "3N1AB51D24L480863"
+                        },
+                        {
+                            "0": 15,
+                            "1": "H186",
+                            "2": 2004,
+                            "3": "LINCOLN NAVIGATOR 8A ASBWLSR",
+                            "4": 58,
+                            "5": "5LMFU28R34LJ15871"
+                        },
+                        {
+                            "0": 16,
+                            "1": "H216",
+                            "2": 2003,
+                            "3": "KIA SEDONA EX 6A ASBWLTWCCSR",
+                            "4": 71,
+                            "5": "KNDUP131236490873"
+                        },
+                        {
+                            "0": 17,
+                            "1": "W066",
+                            "2": 2003,
+                            "3": "JEEP GR CHKE LAREDO 4X4 6A A",
+                            "4": 61,
+                            "5": "1J4GW48S03C591239"
+                        },
+                        {
+                            "0": 18,
+                            "1": "B205",
+                            "2": 2003,
+                            "3": "CHEV MONTE CARLO SS 6A ASBSR",
+                            "4": 51,
+                            "5": "2G1WX12K539362765"
+                        },
+                        {
+                            "0": 19,
+                            "1": "J225",
+                            "2": 2003,
+                            "3": "MAZDA B3000 DUAL SPORT 6M AS",
+                            "4": 64,
+                            "5": "4F4YR12U13TM036512"
+                        },
+                        {
+                            "0": 20,
+                            "1": "G205",
+                            "2": 2002,
+                            "3": "KIA SEDONA LX 6A ASBWLTWCC",
+                            "4": 53,
+                            "5": "KNDUP13102633908"
+                        },
+                        {
+                            "0": 21,
+                            "1": "S195",
+                            "2": 2002,
+                            "3": "DODGE STRATUS SE 4A ASBWLSR",
+                            "4": 86,
+                            "5": "1B3EL46R22N193781"
+                        },
+                        {
+                            "0": 22,
+                            "1": "M215",
+                            "2": 2002,
+                            "3": "DODGE DAKOTA SLT 4X4 8A ASB",
+                            "4": 114,
+                            "5": "1B7HG48NX2S653783"
+                        },
+                        {
+                            "0": 23,
+                            "1": "Z095",
+                            "2": 2002,
+                            "3": "FORD EXPLORER EB 4X4 8A ASBW",
+                            "4": 82,
+                            "5": "1FMDU74W02UB72009"
+                        },
+                        {
+                            "0": 24,
+                            "1": "D135",
+                            "2": 2002,
+                            "3": "FORD EXPLORER XLS 4X4 6A ASB",
+                            "4": 110,
+                            "5": "1FMZU72E42UA13223"
+                        },
+                        {
+                            "0": 25,
+                            "1": "F195",
+                            "2": 2002,
+                            "3": "FORD F150XLT SPORT 4X2 6A A",
+                            "4": 81,
+                            "5": "1FTRX17282NA98776"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Location",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Year",
+                            "field": "2",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Type",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Mileage",
+                            "field": "4",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Vin",
+                            "field": "5",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 25 records retrieved in 0s"
+                    },
+                    "totalRowCount": 25,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 0,
+                    "sql": "CALL AvailableAuto()"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "2f11b697-4c32-41a6-fe82-5f6d710175ff",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 0s",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "subIndex": 1,
+                    "sql": "CALL AvailableAuto()"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 89,
+                "end": 125,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 1,
+                            "resultId": "33728c96-a6c4-4af3-f188-71fd93dcb036",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 0,
+                            "length": 12
+                        },
+                        "contentStart": 0,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 12,
+                            "length": 717
+                        },
+                        "contentStart": 13,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 729,
+                            "length": 12
+                        },
+                        "contentStart": 730,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 741,
+                            "length": 1
+                        },
+                        "contentStart": 740,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 126,
+                "end": 144,
+                "language": "mysql",
+                "currentHeight": 180,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 16
+                        },
+                        "contentStart": 0,
+                        "state": 3
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 16,
+                            "length": 12
+                        },
+                        "contentStart": 16,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 28,
+                            "length": 486
+                        },
+                        "contentStart": 29,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 514,
+                            "length": 12
+                        },
+                        "contentStart": 515,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 526,
+                            "length": 120
+                        },
+                        "contentStart": 527,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 145,
+                "end": 145,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "cb03ce51-9f95-4624-d13a-7c8d7c7c4c95"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 24
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 24,
+                            "length": 0
+                        },
+                        "contentStart": 23,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "cb03ce51-9f95-4624-d13a-7c8d7c7c4c95",
+                    "rows": [
+                        {
+                            "0": 101,
+                            "1": "Burham",
+                            "2": "Luke",
+                            "3": "212 Wedgewood Rd",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)292-1779",
+                            "8": "luke@comcast.net"
+                        },
+                        {
+                            "0": 102,
+                            "1": "Doorey",
+                            "2": "Leon",
+                            "3": "9 Sandelwood Dr",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)366-1929",
+                            "8": "leon@comcast.net"
+                        },
+                        {
+                            "0": 103,
+                            "1": "Mattern",
+                            "2": "Luis",
+                            "3": "205 Hanover Pl",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)366-0159",
+                            "8": "luis@comcast.net"
+                        },
+                        {
+                            "0": 104,
+                            "1": "Seals",
+                            "2": "Lauren",
+                            "3": "163 Darling Rd",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)369-9550",
+                            "8": "lauren@comcast.net"
+                        },
+                        {
+                            "0": 105,
+                            "1": "Webster",
+                            "2": "Sally",
+                            "3": "15 Anglin Dr",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)738-5785",
+                            "8": "sally@comcast.net"
+                        },
+                        {
+                            "0": 106,
+                            "1": "Ward",
+                            "2": "Harry",
+                            "3": "11 Chapel Rd",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)369-0643",
+                            "8": "harry@comcast.net"
+                        },
+                        {
+                            "0": 107,
+                            "1": "Seever",
+                            "2": "Patti",
+                            "3": "19 Danvers Circle",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)544-0923",
+                            "8": "patti@comcast.net"
+                        },
+                        {
+                            "0": 108,
+                            "1": "Poplawski",
+                            "2": "Meredith",
+                            "3": "281 Beverly Rd",
+                            "4": "Elkton",
+                            "5": "MD",
+                            "6": 21119,
+                            "7": "(410)433-0927",
+                            "8": "meri@comcast.net"
+                        },
+                        {
+                            "0": 109,
+                            "1": "Meartz",
+                            "2": "Maria",
+                            "3": "511 Sparrow Ct",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)655-1829",
+                            "8": "maria@comcast.net"
+                        },
+                        {
+                            "0": 110,
+                            "1": "Lee",
+                            "2": "Gregory",
+                            "3": "139 Boyer Way",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)655-0936",
+                            "8": "greg@comcast.net"
+                        },
+                        {
+                            "0": 111,
+                            "1": "Smith",
+                            "2": "John",
+                            "3": "123 Main St",
+                            "4": "Anytown",
+                            "5": "CA",
+                            "6": 12345,
+                            "7": "(123) 456-7890",
+                            "8": "john@example.com"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "CustomerID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "LastName",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "FirstName",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Address",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "City",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "State",
+                            "field": "5",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Zip",
+                            "field": "6",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Telephone",
+                            "field": "7",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Email",
+                            "field": "8",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 11 records retrieved in 0s"
+                    },
+                    "totalRowCount": 11,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SELECT * FROM customers"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 146,
+                "end": 173,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 1,
+                            "resultId": "2032e6ad-efb4-45c3-ac33-2381206d5e23",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 0,
+                            "length": 12
+                        },
+                        "contentStart": 0,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 12,
+                            "length": 479
+                        },
+                        "contentStart": 13,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 491,
+                            "length": 12
+                        },
+                        "contentStart": 492,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 503,
+                            "length": 1
+                        },
+                        "contentStart": 502,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 174,
+                "end": 174,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "90347820-cdc2-46fc-fbfd-8c3159dfb9b4",
+                            "content": "OK, 1 row affected in 1.522ms",
+                            "subIndex": 0
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 75
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 75,
+                            "length": 0
+                        },
+                        "contentStart": 74,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 175,
+                "end": 177,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "3bd19bcb-9307-470b-e03a-0b35ccc39b1f",
+                        "dca77854-1cde-462b-d682-99863c7a9807"
+                    ]
+                },
+                "currentHeight": 352,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 16
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 16,
+                            "length": 20
+                        },
+                        "contentStart": 17,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 36,
+                            "length": 1
+                        },
+                        "contentStart": 35,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "3bd19bcb-9307-470b-e03a-0b35ccc39b1f",
+                    "rows": [
+                        {
+                            "0": 101,
+                            "1": 1,
+                            "2": "2009-01-05",
+                            "3": "8000.00"
+                        },
+                        {
+                            "0": 101,
+                            "1": 1,
+                            "2": "2009-01-21",
+                            "3": "10200.00"
+                        },
+                        {
+                            "0": 105,
+                            "1": 1,
+                            "2": "2009-01-15",
+                            "3": "8500.00"
+                        },
+                        {
+                            "0": 105,
+                            "1": 1,
+                            "2": "2009-01-22",
+                            "3": "9700.00"
+                        },
+                        {
+                            "0": 107,
+                            "1": 1,
+                            "2": "2009-01-20",
+                            "3": "9500.00"
+                        },
+                        {
+                            "0": 103,
+                            "1": 2,
+                            "2": "2009-01-12",
+                            "3": "7100.00"
+                        },
+                        {
+                            "0": 103,
+                            "1": 3,
+                            "2": "2009-01-10",
+                            "3": "7000.00"
+                        },
+                        {
+                            "0": 112,
+                            "1": 4,
+                            "2": "2009-02-12",
+                            "3": "6626.57"
+                        },
+                        {
+                            "0": 102,
+                            "1": 5,
+                            "2": "2009-01-06",
+                            "3": "7800.00"
+                        },
+                        {
+                            "0": 109,
+                            "1": 5,
+                            "2": "2009-01-25",
+                            "3": "7200.00"
+                        },
+                        {
+                            "0": 110,
+                            "1": 10,
+                            "2": "2009-01-26",
+                            "3": "7250.00"
+                        },
+                        {
+                            "0": 106,
+                            "1": 13,
+                            "2": "2009-01-16",
+                            "3": "8800.00"
+                        },
+                        {
+                            "0": 108,
+                            "1": 17,
+                            "2": "2009-01-21",
+                            "3": "9700.00"
+                        },
+                        {
+                            "0": 104,
+                            "1": 21,
+                            "2": "2009-01-11",
+                            "3": "7300.00"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "CustomerID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "AutoID",
+                            "field": "1",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "BidDate",
+                            "field": "2",
+                            "dataType": {
+                                "type": 28
+                            }
+                        },
+                        {
+                            "title": "BidPrice",
+                            "field": "3",
+                            "dataType": {
+                                "type": 10
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 14 records retrieved in 7.972ms"
+                    },
+                    "totalRowCount": 14,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 1,
+                    "sql": "\nSELECT * FROM bids"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "dca77854-1cde-462b-d682-99863c7a9807",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 0 records retrieved in 0.996ms",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "USE autoauction"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 178,
+                "end": 234,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "753001cf-2e7d-4873-f4a1-5933e9d17eee",
+                            "content": "OK, 0 records retrieved in 3.005ms"
+                        },
+                        {
+                            "type": 4,
+                            "index": 2,
+                            "resultId": "38cb66f1-7bd6-4bd6-eec0-02dee59179fe",
+                            "content": "OK, 0 records retrieved in 3ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 33
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 33,
+                            "length": 13
+                        },
+                        "contentStart": 34,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 46,
+                            "length": 1438
+                        },
+                        "contentStart": 48,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1484,
+                            "length": 12
+                        },
+                        "contentStart": 1485,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1496,
+                            "length": 8
+                        },
+                        "contentStart": 1498,
+                        "state": 3
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1484,
+                            "length": 12
+                        },
+                        "contentStart": 1485,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1496,
+                            "length": 1
+                        },
+                        "contentStart": 1495,
+                        "state": 3
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1484,
+                            "length": 12
+                        },
+                        "contentStart": 1485,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1496,
+                            "length": 1
+                        },
+                        "contentStart": 1495,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 235,
+                "end": 236,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 0,
+                            "content": "MySQL Error (1046): ClassicSession.run_sql: No database selected",
+                            "language": "ansi"
+                        },
+                        {
+                            "type": 4,
+                            "index": 1,
+                            "resultId": "878bde58-8619-4f0c-8ef6-a38b0a585483",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 32
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 32,
+                            "length": 17
+                        },
+                        "contentStart": 33,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 49,
+                            "length": 0
+                        },
+                        "contentStart": 48,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 237,
+                "end": 237,
+                "language": "mysql",
+                "currentHeight": 180,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 0
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 238,
+                "end": 255,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "012b0355-54e9-4470-9ddc-1e7554d08031",
+                            "content": "OK, 0 records retrieved in 0s"
+                        },
+                        {
+                            "type": 4,
+                            "index": 2,
+                            "resultId": "6077cdfa-d65b-45d0-c2f5-0c6c6a885f47",
+                            "content": "OK, 0 records retrieved in 2.99ms"
+                        }
+                    ]
+                },
+                "currentHeight": 45.328125,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 16
+                        },
+                        "contentStart": 0,
+                        "state": 3
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 16,
+                            "length": 12
+                        },
+                        "contentStart": 16,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 28,
+                            "length": 484
+                        },
+                        "contentStart": 29,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 512,
+                            "length": 12
+                        },
+                        "contentStart": 513,
+                        "state": 4
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 256,
+                "end": 257,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 0,
+                            "content": "MySQL Error (1644): ClassicSession.run_sql: Price is lower than the highest",
+                            "language": "ansi"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 92
+                        },
+                        "contentStart": 0,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 258,
+                "end": 259,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 0,
+                            "content": "MySQL Error (1644): ClassicSession.run_sql: CustomerID not found in customers table",
+                            "language": "ansi"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 92
+                        },
+                        "contentStart": 0,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 260,
+                "end": 274,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "35cc3eb3-ff93-489c-b290-1291a98cf32f",
+                            "content": "OK, 0 records retrieved in 0s"
+                        },
+                        {
+                            "type": 4,
+                            "index": 2,
+                            "resultId": "c70371df-d595-45ea-ec0c-53abbcecbee3",
+                            "content": "OK, 0 records retrieved in 0s"
+                        }
+                    ]
+                },
+                "currentHeight": 45.328125,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 36
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 36,
+                            "length": 13
+                        },
+                        "contentStart": 37,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 49,
+                            "length": 313
+                        },
+                        "contentStart": 50,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 275,
+                "end": 301,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "d76f29e6-453c-4ce2-81e6-5e2deb3b7c41",
+                            "content": "OK, 0 records retrieved in 1.992ms"
+                        },
+                        {
+                            "type": 0,
+                            "index": 2,
+                            "content": "MySQL Error (1415): ClassicSession.run_sql: Not allowed to return a result set from a trigger",
+                            "language": "ansi"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 352,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 33
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 33,
+                            "length": 13
+                        },
+                        "contentStart": 34,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 46,
+                            "length": 472
+                        },
+                        "contentStart": 48,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 518,
+                            "length": 13
+                        },
+                        "contentStart": 520,
+                        "state": 4
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 302,
+                "end": 306,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "4fbd11f9-b441-4fbb-977a-1683557d4914",
+                        "d692b50a-99e6-42b2-979a-929aca5a2be9",
+                        "7b7b7490-5516-46f8-b6f2-1c17fe2efd26"
+                    ]
+                },
+                "currentHeight": 36,
+                "currentSet": 1,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 44
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 44,
+                            "length": 95
+                        },
+                        "contentStart": 45,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 139,
+                            "length": 20
+                        },
+                        "contentStart": 140,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "4fbd11f9-b441-4fbb-977a-1683557d4914",
+                    "rows": [
+                        {
+                            "0": 101,
+                            "1": 1,
+                            "2": "2009-01-05",
+                            "3": "8000.00"
+                        },
+                        {
+                            "0": 101,
+                            "1": 1,
+                            "2": "2009-01-21",
+                            "3": "10200.00"
+                        },
+                        {
+                            "0": 105,
+                            "1": 1,
+                            "2": "2009-01-15",
+                            "3": "8500.00"
+                        },
+                        {
+                            "0": 105,
+                            "1": 1,
+                            "2": "2009-01-22",
+                            "3": "9700.00"
+                        },
+                        {
+                            "0": 107,
+                            "1": 1,
+                            "2": "2009-01-20",
+                            "3": "9500.00"
+                        },
+                        {
+                            "0": 103,
+                            "1": 2,
+                            "2": "2009-01-12",
+                            "3": "7100.00"
+                        },
+                        {
+                            "0": 103,
+                            "1": 3,
+                            "2": "2009-01-10",
+                            "3": "7000.00"
+                        },
+                        {
+                            "0": 102,
+                            "1": 5,
+                            "2": "2009-01-06",
+                            "3": "7800.00"
+                        },
+                        {
+                            "0": 109,
+                            "1": 5,
+                            "2": "2009-01-25",
+                            "3": "7200.00"
+                        },
+                        {
+                            "0": 110,
+                            "1": 10,
+                            "2": "2009-01-26",
+                            "3": "7250.00"
+                        },
+                        {
+                            "0": 106,
+                            "1": 13,
+                            "2": "2009-01-16",
+                            "3": "8800.00"
+                        },
+                        {
+                            "0": 108,
+                            "1": 17,
+                            "2": "2009-01-21",
+                            "3": "9700.00"
+                        },
+                        {
+                            "0": 104,
+                            "1": 21,
+                            "2": "2009-01-11",
+                            "3": "7300.00"
+                        },
+                        {
+                            "0": 112,
+                            "1": 25,
+                            "2": "2009-01-07",
+                            "3": "10000.00"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "CustomerID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "AutoID",
+                            "field": "1",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "BidDate",
+                            "field": "2",
+                            "dataType": {
+                                "type": 28
+                            }
+                        },
+                        {
+                            "title": "BidPrice",
+                            "field": "3",
+                            "dataType": {
+                                "type": 10
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 14 records retrieved in 0s"
+                    },
+                    "totalRowCount": 14,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 2,
+                    "sql": "\nSELECT * FROM bids"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "d692b50a-99e6-42b2-979a-929aca5a2be9",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 1 row affected in 0.996ms",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "DELETE FROM bids\nWHERE BidDate='2009-02-07'"
+                },
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "7b7b7490-5516-46f8-b6f2-1c17fe2efd26",
+                    "rows": [],
+                    "executionInfo": {
+                        "text": "OK, 1 row affected in 1.992ms",
+                        "type": 4
+                    },
+                    "totalRowCount": 0,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 1,
+                    "sql": "\nINSERT INTO bids (CustomerID, AutoID, BidDate, BidPrice)\nVALUE (112, 25, '2009-01-07', 10000)"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 307,
+                "end": 307,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "ce754516-6a34-452b-92ee-003753031f92"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 24
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "ce754516-6a34-452b-92ee-003753031f92",
+                    "rows": [
+                        {
+                            "0": 101,
+                            "1": "Burham",
+                            "2": "Luke",
+                            "3": "212 Wedgewood Rd",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)292-1779",
+                            "8": "luke@comcast.net"
+                        },
+                        {
+                            "0": 102,
+                            "1": "Doorey",
+                            "2": "Leon",
+                            "3": "9 Sandelwood Dr",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)366-1929",
+                            "8": "leon@comcast.net"
+                        },
+                        {
+                            "0": 103,
+                            "1": "Mattern",
+                            "2": "Luis",
+                            "3": "205 Hanover Pl",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)366-0159",
+                            "8": "luis@comcast.net"
+                        },
+                        {
+                            "0": 104,
+                            "1": "Seals",
+                            "2": "Lauren",
+                            "3": "163 Darling Rd",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)369-9550",
+                            "8": "lauren@comcast.net"
+                        },
+                        {
+                            "0": 105,
+                            "1": "Webster",
+                            "2": "Sally",
+                            "3": "15 Anglin Dr",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)738-5785",
+                            "8": "sally@comcast.net"
+                        },
+                        {
+                            "0": 106,
+                            "1": "Ward",
+                            "2": "Harry",
+                            "3": "11 Chapel Rd",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)369-0643",
+                            "8": "harry@comcast.net"
+                        },
+                        {
+                            "0": 107,
+                            "1": "Seever",
+                            "2": "Patti",
+                            "3": "19 Danvers Circle",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)544-0923",
+                            "8": "patti@comcast.net"
+                        },
+                        {
+                            "0": 108,
+                            "1": "Poplawski",
+                            "2": "Meredith",
+                            "3": "281 Beverly Rd",
+                            "4": "Elkton",
+                            "5": "MD",
+                            "6": 21119,
+                            "7": "(410)433-0927",
+                            "8": "meri@comcast.net"
+                        },
+                        {
+                            "0": 109,
+                            "1": "Meartz",
+                            "2": "Maria",
+                            "3": "511 Sparrow Ct",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)655-1829",
+                            "8": "maria@comcast.net"
+                        },
+                        {
+                            "0": 110,
+                            "1": "Lee",
+                            "2": "Gregory",
+                            "3": "139 Boyer Way",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)655-0936",
+                            "8": "greg@comcast.net"
+                        },
+                        {
+                            "0": 111,
+                            "1": "Smith",
+                            "2": "John",
+                            "3": "123 Main St",
+                            "4": "Anytown",
+                            "5": "CA",
+                            "6": 12345,
+                            "7": "(123) 456-7890",
+                            "8": "john@example.com"
+                        },
+                        {
+                            "0": 112,
+                            "1": "Ibrahimovic",
+                            "2": "Zlatan",
+                            "3": "Lincoln road",
+                            "4": "Miami",
+                            "5": "FL",
+                            "6": 46959,
+                            "7": "(123) 123-7890",
+                            "8": "Zlatan@gmail.com"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "CustomerID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "LastName",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "FirstName",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Address",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "City",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "State",
+                            "field": "5",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Zip",
+                            "field": "6",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Telephone",
+                            "field": "7",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Email",
+                            "field": "8",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 12 records retrieved in 0s"
+                    },
+                    "totalRowCount": 12,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SELECT * FROM customers"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 308,
+                "end": 329,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 1,
+                            "content": "MySQL Error (1359): ClassicSession.run_sql: Trigger already exists",
+                            "language": "ansi"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 0,
+                            "length": 12
+                        },
+                        "contentStart": 0,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": "//",
+                        "span": {
+                            "start": 12,
+                            "length": 392
+                        },
+                        "contentStart": 14,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 404,
+                            "length": 13
+                        },
+                        "contentStart": 406,
+                        "state": 4
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 417,
+                            "length": 1
+                        },
+                        "contentStart": 416,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 330,
+                "end": 340,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "b30b8aa2-b7fe-49bf-e2d9-3625b10b80ca",
+                            "content": "OK, 1 row affected in 1ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 288
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 341,
+                "end": 341,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "1005edb0-c131-4fd5-867a-35ecd794d1f6"
+                    ]
+                },
+                "currentHeight": 352,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 14
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "7dba7e60-b695-4d77-f778-65c2e46570c6",
+                    "resultId": "1005edb0-c131-4fd5-867a-35ecd794d1f6",
+                    "rows": [
+                        {
+                            "0": "check_bid",
+                            "1": "INSERT",
+                            "2": "bids",
+                            "3": "BEGIN\n    DECLARE valid_term INT;\n    DECLARE this_date DATE;\n    DECLARE earliest_date DATE;\n    DECLARE this_price INT ;\n    DECLARE biggest_price INT ;\n    DECLARE customer_exists INT;\n    DECLARE auto_exists INT; -- 用于检查CustomerID是否存在的变量\n    \n    SET valid_term = 30;\n    SET this_date = NEW.BidDate;\n    SET this_price = NEW.BidPrice;\n\n    SELECT COUNT(*) INTO auto_exists\n    FROM vehicles\n    WHERE AutoID = NEW.AutoID;\n   \n    SELECT COUNT(*) INTO customer_exists\n    FROM customers\n    WHERE CustomerID = NEW.CustomerID;\n\n    IF customer_exists = 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'Customer not found';\n    ELSEIF auto_exists = 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'Auto not found';\n    ELSE\n        -- 如果CustomerID存在，继续执行其他检查\n        SELECT MIN(BidDate) INTO earliest_date\n        FROM bids\n        WHERE AutoID = NEW.AutoID;\n\n        SELECT MAX(BidPrice) INTO biggest_price\n        FROM bids\n        WHERE AutoID = NEW.AutoID;\n\n        IF earliest_date IS NOT NULL AND DATEDIFF(this_date, earliest_date) > valid_term THEN\n            SIGNAL SQLSTATE '45000'\n            SET MESSAGE_TEXT = 'Bid is overdue';\n        END IF;\n\n        IF this_price < biggest_price THEN\n            SIGNAL SQLSTATE '45000'\n            SET MESSAGE_TEXT = 'Price is lower than the highest';\n        END IF;\n    END IF;\nEND",
+                            "4": "BEFORE",
+                            "5": "2024-01-01 18:53:38.490000",
+                            "6": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                            "7": "root@localhost",
+                            "8": "utf8mb4",
+                            "9": "utf8mb4_general_ci",
+                            "10": "latin1_swedish_ci"
+                        },
+                        {
+                            "0": "BidCheckTrigger",
+                            "1": "INSERT",
+                            "2": "bids",
+                            "3": "BEGIN\n    DECLARE earliestBidDate DATE;\n    DECLARE currentMaxBid DECIMAL(10, 2);\n    DECLARE currentDate DATE;\n    DECLARE customerIdWithMaxBid INT;\n    DECLARE autoIdWithMaxBid INT;\n    \n    -- 获取当前竞标的AutoID和BidDate\n    SET autoIdWithMaxBid = NEW.AutoID;\n    SET currentDate = NEW.BidDate;\n\n    -- 获取该AutoID的最早竞标日期和当前最大竞标价格\n    SELECT MIN(BidDate), MAX(BidPrice) INTO earliestBidDate, currentMaxBid\n    FROM Bids\n    WHERE AutoID = autoIdWithMaxBid;\n\n    -- 检查是否超过一个月\n    IF DATEDIFF(currentDate, earliestBidDate) > 30 THEN\n        -- 打印消息，表明竞标日期已经过期\n        SET @message1 = CONCAT('Bid date ', DATE_FORMAT(currentDate, '%Y-%m-%d'), ' is overdue.');\n        \n        -- 检查是否有竞标价格低于当前最大竞标价格\n        IF NEW.BidPrice < currentMaxBid THEN\n            -- 打印消息，表明竞标价格低于当前最大竞标价格\n            SET @message2 = CONCAT('Bid ', NEW.BidPrice, ' is less than current max bid ', currentMaxBid);\n        END IF;\n        \n        -- 检查是否有竞标超过一个月并更新数据库\n        IF DATEDIFF(currentDate, earliestBidDate) > 30 THEN\n            -- 找到最大竞标价格对应的CustomerID\n            SELECT CustomerID INTO customerIdWithMaxBid\n            FROM Bids\n            WHERE AutoID = autoIdWithMaxBid AND BidPrice = currentMaxBid\n            LIMIT 1;\n            \n            -- 更新数据库，标记该客户为竞标赢家\n            UPDATE Bids\n            SET WonBid = 1\n            WHERE AutoID = autoIdWithMaxBid AND CustomerID = customerIdWithMaxBid;\n            \n            -- 打印消息，表明该客户赢得了竞标\n            SET @message3 = CONCAT('Customer ', customerIdWithMaxBid, ' wins AutoID ', autoIdWithMaxBid);\n        END IF;\n        \n        -- 将消息插入到TriggerResults表格中\n        INSERT INTO TriggerResults (Message) VALUES (@message1);\n        INSERT INTO TriggerResults (Message) VALUES (@message2);\n        INSERT INTO TriggerResults (Message) VALUES (@message3);\n    END IF;\nEND",
+                            "4": "AFTER",
+                            "5": "2023-12-15 18:41:31.410000",
+                            "6": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                            "7": "root@localhost",
+                            "8": "utf8mb4",
+                            "9": "utf8mb4_general_ci",
+                            "10": "latin1_swedish_ci"
+                        },
+                        {
+                            "0": "check_customerID_exists",
+                            "1": "INSERT",
+                            "2": "customers",
+                            "3": "BEGIN\n    DECLARE customer_exists INT;\n\n    -- 检查新插入的 CustomerID 是否已经存在\n    SELECT COUNT(*) INTO customer_exists\n    FROM customers\n    WHERE CustomerID = NEW.CustomerID;\n\n    IF customer_exists > 0 THEN\n        SIGNAL SQLSTATE '45000'\n        SET MESSAGE_TEXT = 'CustomerID already exists';\n    END IF;\nEND",
+                            "4": "BEFORE",
+                            "5": "2024-01-01 19:04:12.520000",
+                            "6": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                            "7": "root@localhost",
+                            "8": "utf8mb4",
+                            "9": "utf8mb4_general_ci",
+                            "10": "latin1_swedish_ci"
+                        },
+                        {
+                            "0": "AutoBidTrigger",
+                            "1": "INSERT",
+                            "2": "customers",
+                            "3": "BEGIN\n    DECLARE randomAutoID INT;\n    DECLARE randomDate DATE;\n    DECLARE randomPrice DECIMAL(10, 2);\n\n    SET randomAutoID = FLOOR(1 + RAND() * 25);\n    SET randomDate = DATE_ADD('2009-01-01', INTERVAL FLOOR(RAND() * 45) DAY);\n    SET randomPrice = 1000 + (RAND() * 19000);\n\n    INSERT INTO Bids (CustomerID, AutoID, BidDate, BidPrice)\n    VALUES (NEW.CustomerID, randomAutoID, randomDate, randomPrice);\nEND",
+                            "4": "AFTER",
+                            "5": "2023-12-15 18:42:52.900000",
+                            "6": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                            "7": "root@localhost",
+                            "8": "utf8mb4",
+                            "9": "utf8mb4_general_ci",
+                            "10": "latin1_swedish_ci"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "Trigger",
+                            "field": "0",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Event",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Table",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Statement",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Timing",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Created",
+                            "field": "5",
+                            "dataType": {
+                                "type": 26
+                            }
+                        },
+                        {
+                            "title": "sql_mode",
+                            "field": "6",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Definer",
+                            "field": "7",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "character_set_client",
+                            "field": "8",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "collation_connection",
+                            "field": "9",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Database Collation",
+                            "field": "10",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 4 records retrieved in 2ms"
+                    },
+                    "totalRowCount": 4,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SHOW TRIGGERS"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 342,
+                "end": 342,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "3cc99797-e853-4d8c-ff00-f8a20b145a18",
+                            "content": "OK, 0 records retrieved in 4.999ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 28
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 343,
+                "end": 343,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "b89128eb-3c6a-4856-b41b-fddc44f57c63",
+                            "content": "OK, 1 row affected in 2ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 45
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 344,
+                "end": 344,
+                "language": "mysql",
+                "currentHeight": 180,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 0
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        }
+    ]
+}

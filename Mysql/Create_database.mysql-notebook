@@ -1,0 +1,1186 @@
+{
+    "type": "MySQLNotebook",
+    "version": "1.0",
+    "caption": "DB Notebook",
+    "content": "\\about\nSHOW DATABASES;\n\nCREATE DATABASE AutoAuction;\n\nUSE autoauction;\n\n\nCREATE TABLE Customers (\n    CustomerID INT PRIMARY KEY AUTO_INCREMENT,\n    LastName VARCHAR(50),\n    FirstName VARCHAR(50),\n    Address VARCHAR(255),\n    City VARCHAR(50),\n    State VARCHAR(2),\n    Zip INT,\n    Telephone VARCHAR(15),\n    Email VARCHAR(100)\n);\n\n\nDROP TABLE vehicles;\nCREATE TABLE Vehicles (\n    AutoID INT PRIMARY KEY AUTO_INCREMENT,\n    Location VARCHAR(5),\n    Year INT,\n    Type VARCHAR(100),\n    Mileage INT,\n    Vin VARCHAR(30)\n);\nINSERT INTO Vehicles (Location, Year, Type, Mileage, Vin)\nVALUES\n    ('O765', 2007, 'CHEV SUBURBAN LT 4X4 8A NAV', 23, '1GNFK16307J157555'),\n    ('C173', 2007, 'CHEV HHR 4A ASBWLTWCCSR', 7, '3GNDA33PX7S5221231'),\n    ('L234', 2006, 'FORD F150 XL 6A ASBTW', 22, '1FTRF12216NB66324'),\n    ('B155', 2006, 'CHEV TAHOE 4X4 8A ASBWLTWCC', 48, '1GNEK13T26R105776'),\n    ('H156', 2006, 'PONTIAC G6 4A ASBWLTWCC', 19, '1G2ZF55B864232654'),\n    ('B211', 2005, 'KIA OPTIMA LX 4A ASBWLTWCC', 47, 'KNAGD126055385324'),\n    ('J221', 2005, 'KIA OPTIMA LX 4A ASBWLTWCC', 51, 'KNAGD126955392764'),\n    ('L181', 2005, 'BMW 330I 6A ASBWLTWCCSR', 61, 'WBAEV53455KM41874'),\n    ('C211', 2005, 'FORD FOCUS ZX4 4A ASB', 45, '1FAFP34N45W254872'),\n    ('L211', 2005, 'FORD F150 XL 4X2 6M ASBTW', 49, '1FTRF122X5NB81984'),\n    ('D196', 2005, 'PONTIAC G6 6A ASBWLTWCC', 43, '1G2ZG528754159894'),\n    ('B196', 2004, 'FORD F150 OFFROAD 4X4 XCAB 8', 60, '1FTPX14504FA15423'),\n    ('S126', 2004, 'CHEV MALIBU 4A ASBWLTWCC', 90, '1G1ND52FX4M505982'),\n    ('S206', 2004, 'NISSAN SENTRA SE/R 4M ASBSR', 41, '3N1AB51D24L480863'),\n    ('H186', 2004, 'LINCOLN NAVIGATOR 8A ASBWLSR', 58, '5LMFU28R34LJ15871'),\n    ('H216', 2003, 'KIA SEDONA EX 6A ASBWLTWCCSR', 71, 'KNDUP131236490873'),\n    ('W066', 2003, 'JEEP GR CHKE LAREDO 4X4 6A A', 61, '1J4GW48S03C591239'),\n    ('B205', 2003, 'CHEV MONTE CARLO SS 6A ASBSR', 51, '2G1WX12K539362765'),\n    ('J225', 2003, 'MAZDA B3000 DUAL SPORT 6M AS', 64, '4F4YR12U13TM036512'),\n    ('G205', 2002, 'KIA SEDONA LX 6A ASBWLTWCC', 53, 'KNDUP13102633908'),\n    ('S195', 2002, 'DODGE STRATUS SE 4A ASBWLSR', 86, '1B3EL46R22N193781'),\n    ('M215', 2002, 'DODGE DAKOTA SLT 4X4 8A ASB', 114, '1B7HG48NX2S653783'),\n    ('Z095', 2002, 'FORD EXPLORER EB 4X4 8A ASBW', 82, '1FMDU74W02UB72009'),\n    ('D135', 2002, 'FORD EXPLORER XLS 4X4 6A ASB', 110, '1FMZU72E42UA13223'),\n    ('F195', 2002, 'FORD F150XLT SPORT 4X2 6A A', 81, '1FTRX17282NA98776');\nINSERT INTO Customers (CustomerID, LastName, FirstName, Address, City, State, Zip, Telephone, Email)\nVALUES\n    (101, 'Burham', 'Luke', '212 Wedgewood Rd', 'Kennet Square', 'PA', 19348, '(610)292-1779', 'luke@comcast.net'),\n    (103, 'Mattern', 'Luis', '205 Hanover Pl', 'Avondale', 'PA', 19311, '(610)366-0159', 'luis@comcast.net'),\n    (109, 'Meartz', 'Maria', '511 Sparrow Ct', 'Wilmington', 'DE', 19808, '(302)655-1829', 'maria@comcast.net'),\n    (104, 'Seals', 'Lauren', '163 Darling Rd', 'Kennet Square', 'PA', 19348, '(610)369-9550', 'lauren@comcast.net'),\n    (108, 'Poplawski', 'Meredith', '281 Beverly Rd', 'Elkton', 'MD', 21119, '(410)433-0927', 'meri@comcast.net'),\n    (102, 'Doorey', 'Leon', '9 Sandelwood Dr', 'Avondale', 'PA', 19311, '(610)366-1929', 'leon@comcast.net'),\n    (105, 'Webster', 'Sally', '15 Anglin Dr', 'Wilmington', 'DE', 19808, '(302)738-5785', 'sally@comcast.net'),\n    (106, 'Ward', 'Harry', '11 Chapel Rd', 'Wilmington', 'DE', 19808, '(302)369-0643', 'harry@comcast.net'),\n    (107, 'Seever', 'Patti', '19 Danvers Circle', 'Kennet Square', 'PA', 19348, '(610)544-0923', 'patti@comcast.net'),\n    (110, 'Lee', 'Gregory', '139 Boyer Way', 'Avondale', 'PA', 19311, '(610)655-0936', 'greg@comcast.net');\nSELECT * FROM customers;\nSELECT * FROM vehicles;\nCREATE TABLE Bids (\n    CustomerID INT,\n    AutoID INT,\n    BidDate DATE,\n    BidPrice DECIMAL(10, 2),\n    PRIMARY KEY (CustomerID, AutoID, BidDate, BidPrice),\n    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),\n    FOREIGN KEY (AutoID) REFERENCES Vehicles(AutoID)\n);\nINSERT INTO Bids (CustomerID, AutoID, BidDate, BidPrice)\nVALUES\n    (101, 1, '2009-01-05', 8000.00),   \n    (103, 3, '2009-01-10', 7000.00),   \n    (105, 1, '2009-01-15', 8500.00),   \n    (107, 1, '2009-01-20', 9500.00),   \n    (109, 5, '2009-01-25', 7200.00),   \n    (102, 5, '2009-01-06', 7800.00),   \n    (104, 21, '2009-01-11', 7300.00),  \n    (106, 13, '2009-01-16', 8800.00),   \n    (108, 17, '2009-01-21', 9700.00),  \n    (110, 10, '2009-01-26', 7250.00),  \n    (101, 1, '2009-01-21', 10200.00),   \n    (103, 2, '2009-01-12', 7100.00); \n\nSELECT * FROM Bids\n",
+    "options": {
+        "tabSize": 4,
+        "indentSize": 4,
+        "insertSpaces": true,
+        "defaultEOL": "LF",
+        "trimAutoWhitespace": true
+    },
+    "viewState": {
+        "cursorState": [
+            {
+                "inSelectionMode": false,
+                "selectionStart": {
+                    "lineNumber": 19,
+                    "column": 3
+                },
+                "position": {
+                    "lineNumber": 19,
+                    "column": 3
+                }
+            }
+        ],
+        "viewState": {
+            "scrollLeft": 0,
+            "firstPosition": {
+                "lineNumber": 71,
+                "column": 1
+            },
+            "firstPositionDeltaTop": -14
+        },
+        "contributionsState": {
+            "editor.contrib.folding": {},
+            "editor.contrib.wordHighlighter": false
+        }
+    },
+    "contexts": [
+        {
+            "state": {
+                "start": 1,
+                "end": 1,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 2,
+                            "content": "Welcome to the MySQL Shell - DB Notebook.\n\nPress Ctrl+Enter to execute the code block.\n\nExecute \\sql to switch to SQL, \\js to JavaScript and \\ts to TypeScript mode.\nExecute \\help or \\? for help;",
+                            "language": "ansi"
+                        }
+                    ]
+                },
+                "currentHeight": 120,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 6
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 2,
+                "end": 3,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "dc093c0a-4766-4a23-b50f-d5e0f60f0e61"
+                    ]
+                },
+                "currentHeight": 256.328125,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 15
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 15,
+                            "length": 1
+                        },
+                        "contentStart": 14,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "99f61ba6-2a6c-4b7e-bf33-25441952075a",
+                    "resultId": "dc093c0a-4766-4a23-b50f-d5e0f60f0e61",
+                    "rows": [
+                        {
+                            "0": "information_schema"
+                        },
+                        {
+                            "0": "db1"
+                        },
+                        {
+                            "0": "mysql"
+                        },
+                        {
+                            "0": "performance_schema"
+                        },
+                        {
+                            "0": "sakila"
+                        },
+                        {
+                            "0": "sys"
+                        },
+                        {
+                            "0": "test"
+                        },
+                        {
+                            "0": "world"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "Database",
+                            "field": "0",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 8 records retrieved in 0s"
+                    },
+                    "totalRowCount": 8,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SHOW DATABASES"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 4,
+                "end": 8,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 0,
+                            "content": "MySQL Error (1007): ClassicSession.run_sql: Can't create database 'autoauction'; database exists",
+                            "language": "ansi"
+                        },
+                        {
+                            "type": 4,
+                            "index": 1,
+                            "resultId": "4ba60dc1-5b79-4151-f056-d4923b996f4a",
+                            "content": "OK, 0 records retrieved in 1ms"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 45.328125,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 28
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 28,
+                            "length": 18
+                        },
+                        "contentStart": 30,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 46,
+                            "length": 2
+                        },
+                        "contentStart": 45,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 9,
+                "end": 19,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "82e9cb7f-c9e6-46e8-b7b5-597c5e1ce7de",
+                            "content": "OK, 0 records retrieved in 15.167ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 260
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 20,
+                "end": 20,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "f27e03fe-3271-481c-d417-d2c78f5bdd82",
+                            "content": "OK, 0 records retrieved in 10ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 0
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 21,
+                "end": 21,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 0,
+                            "index": 0,
+                            "content": "MySQL Error (1406): ClassicSession.run_sql: Data too long for column 'Vin' at row 2",
+                            "language": "ansi"
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": ""
+                    }
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 0
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 22,
+                "end": 22,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "6f917edc-364a-4795-a4e2-341cf09ab5bd",
+                            "content": "OK, 0 records retrieved in 4.765ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 20
+                        },
+                        "contentStart": 1,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 23,
+                "end": 30,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "e634c140-bda2-4d4e-ff7c-c9b0d92a6a90",
+                            "content": "OK, 0 records retrieved in 14.286ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 168
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 31,
+                "end": 57,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "d70f2eb8-9f94-49df-92ae-76aa05ee7135",
+                            "content": "OK, 25 rows affected in 2.01ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 1938
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 58,
+                "end": 69,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "475c8661-6922-4fd1-e4bc-82194a7ec80f",
+                            "content": "OK, 10 rows affected in 1.999ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 1235
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 1235,
+                            "length": 0
+                        },
+                        "contentStart": 1234,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 70,
+                "end": 70,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "ef8c5eb1-1711-452c-c076-33922ec05e1c"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 24
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "99f61ba6-2a6c-4b7e-bf33-25441952075a",
+                    "resultId": "ef8c5eb1-1711-452c-c076-33922ec05e1c",
+                    "rows": [
+                        {
+                            "0": 101,
+                            "1": "Burham",
+                            "2": "Luke",
+                            "3": "212 Wedgewood Rd",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)292-1779",
+                            "8": "luke@comcast.net"
+                        },
+                        {
+                            "0": 102,
+                            "1": "Doorey",
+                            "2": "Leon",
+                            "3": "9 Sandelwood Dr",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)366-1929",
+                            "8": "leon@comcast.net"
+                        },
+                        {
+                            "0": 103,
+                            "1": "Mattern",
+                            "2": "Luis",
+                            "3": "205 Hanover Pl",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)366-0159",
+                            "8": "luis@comcast.net"
+                        },
+                        {
+                            "0": 104,
+                            "1": "Seals",
+                            "2": "Lauren",
+                            "3": "163 Darling Rd",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)369-9550",
+                            "8": "lauren@comcast.net"
+                        },
+                        {
+                            "0": 105,
+                            "1": "Webster",
+                            "2": "Sally",
+                            "3": "15 Anglin Dr",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)738-5785",
+                            "8": "sally@comcast.net"
+                        },
+                        {
+                            "0": 106,
+                            "1": "Ward",
+                            "2": "Harry",
+                            "3": "11 Chapel Rd",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)369-0643",
+                            "8": "harry@comcast.net"
+                        },
+                        {
+                            "0": 107,
+                            "1": "Seever",
+                            "2": "Patti",
+                            "3": "19 Danvers Circle",
+                            "4": "Kennet Square",
+                            "5": "PA",
+                            "6": 19348,
+                            "7": "(610)544-0923",
+                            "8": "patti@comcast.net"
+                        },
+                        {
+                            "0": 108,
+                            "1": "Poplawski",
+                            "2": "Meredith",
+                            "3": "281 Beverly Rd",
+                            "4": "Elkton",
+                            "5": "MD",
+                            "6": 21119,
+                            "7": "(410)433-0927",
+                            "8": "meri@comcast.net"
+                        },
+                        {
+                            "0": 109,
+                            "1": "Meartz",
+                            "2": "Maria",
+                            "3": "511 Sparrow Ct",
+                            "4": "Wilmington",
+                            "5": "DE",
+                            "6": 19808,
+                            "7": "(302)655-1829",
+                            "8": "maria@comcast.net"
+                        },
+                        {
+                            "0": 110,
+                            "1": "Lee",
+                            "2": "Gregory",
+                            "3": "139 Boyer Way",
+                            "4": "Avondale",
+                            "5": "PA",
+                            "6": 19311,
+                            "7": "(610)655-0936",
+                            "8": "greg@comcast.net"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "CustomerID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "LastName",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "FirstName",
+                            "field": "2",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Address",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "City",
+                            "field": "4",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "State",
+                            "field": "5",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Zip",
+                            "field": "6",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Telephone",
+                            "field": "7",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Email",
+                            "field": "8",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 10 records retrieved in 0s"
+                    },
+                    "totalRowCount": 10,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SELECT * FROM customers"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 71,
+                "end": 71,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "e00da07b-04e9-4d43-b18f-0ffb48561dc0"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 23
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "99f61ba6-2a6c-4b7e-bf33-25441952075a",
+                    "resultId": "e00da07b-04e9-4d43-b18f-0ffb48561dc0",
+                    "rows": [
+                        {
+                            "0": 1,
+                            "1": "O765",
+                            "2": 2007,
+                            "3": "CHEV SUBURBAN LT 4X4 8A NAV",
+                            "4": 23,
+                            "5": "1GNFK16307J157555"
+                        },
+                        {
+                            "0": 2,
+                            "1": "C173",
+                            "2": 2007,
+                            "3": "CHEV HHR 4A ASBWLTWCCSR",
+                            "4": 7,
+                            "5": "3GNDA33PX7S5221231"
+                        },
+                        {
+                            "0": 3,
+                            "1": "L234",
+                            "2": 2006,
+                            "3": "FORD F150 XL 6A ASBTW",
+                            "4": 22,
+                            "5": "1FTRF12216NB66324"
+                        },
+                        {
+                            "0": 4,
+                            "1": "B155",
+                            "2": 2006,
+                            "3": "CHEV TAHOE 4X4 8A ASBWLTWCC",
+                            "4": 48,
+                            "5": "1GNEK13T26R105776"
+                        },
+                        {
+                            "0": 5,
+                            "1": "H156",
+                            "2": 2006,
+                            "3": "PONTIAC G6 4A ASBWLTWCC",
+                            "4": 19,
+                            "5": "1G2ZF55B864232654"
+                        },
+                        {
+                            "0": 6,
+                            "1": "B211",
+                            "2": 2005,
+                            "3": "KIA OPTIMA LX 4A ASBWLTWCC",
+                            "4": 47,
+                            "5": "KNAGD126055385324"
+                        },
+                        {
+                            "0": 7,
+                            "1": "J221",
+                            "2": 2005,
+                            "3": "KIA OPTIMA LX 4A ASBWLTWCC",
+                            "4": 51,
+                            "5": "KNAGD126955392764"
+                        },
+                        {
+                            "0": 8,
+                            "1": "L181",
+                            "2": 2005,
+                            "3": "BMW 330I 6A ASBWLTWCCSR",
+                            "4": 61,
+                            "5": "WBAEV53455KM41874"
+                        },
+                        {
+                            "0": 9,
+                            "1": "C211",
+                            "2": 2005,
+                            "3": "FORD FOCUS ZX4 4A ASB",
+                            "4": 45,
+                            "5": "1FAFP34N45W254872"
+                        },
+                        {
+                            "0": 10,
+                            "1": "L211",
+                            "2": 2005,
+                            "3": "FORD F150 XL 4X2 6M ASBTW",
+                            "4": 49,
+                            "5": "1FTRF122X5NB81984"
+                        },
+                        {
+                            "0": 11,
+                            "1": "D196",
+                            "2": 2005,
+                            "3": "PONTIAC G6 6A ASBWLTWCC",
+                            "4": 43,
+                            "5": "1G2ZG528754159894"
+                        },
+                        {
+                            "0": 12,
+                            "1": "B196",
+                            "2": 2004,
+                            "3": "FORD F150 OFFROAD 4X4 XCAB 8",
+                            "4": 60,
+                            "5": "1FTPX14504FA15423"
+                        },
+                        {
+                            "0": 13,
+                            "1": "S126",
+                            "2": 2004,
+                            "3": "CHEV MALIBU 4A ASBWLTWCC",
+                            "4": 90,
+                            "5": "1G1ND52FX4M505982"
+                        },
+                        {
+                            "0": 14,
+                            "1": "S206",
+                            "2": 2004,
+                            "3": "NISSAN SENTRA SE/R 4M ASBSR",
+                            "4": 41,
+                            "5": "3N1AB51D24L480863"
+                        },
+                        {
+                            "0": 15,
+                            "1": "H186",
+                            "2": 2004,
+                            "3": "LINCOLN NAVIGATOR 8A ASBWLSR",
+                            "4": 58,
+                            "5": "5LMFU28R34LJ15871"
+                        },
+                        {
+                            "0": 16,
+                            "1": "H216",
+                            "2": 2003,
+                            "3": "KIA SEDONA EX 6A ASBWLTWCCSR",
+                            "4": 71,
+                            "5": "KNDUP131236490873"
+                        },
+                        {
+                            "0": 17,
+                            "1": "W066",
+                            "2": 2003,
+                            "3": "JEEP GR CHKE LAREDO 4X4 6A A",
+                            "4": 61,
+                            "5": "1J4GW48S03C591239"
+                        },
+                        {
+                            "0": 18,
+                            "1": "B205",
+                            "2": 2003,
+                            "3": "CHEV MONTE CARLO SS 6A ASBSR",
+                            "4": 51,
+                            "5": "2G1WX12K539362765"
+                        },
+                        {
+                            "0": 19,
+                            "1": "J225",
+                            "2": 2003,
+                            "3": "MAZDA B3000 DUAL SPORT 6M AS",
+                            "4": 64,
+                            "5": "4F4YR12U13TM036512"
+                        },
+                        {
+                            "0": 20,
+                            "1": "G205",
+                            "2": 2002,
+                            "3": "KIA SEDONA LX 6A ASBWLTWCC",
+                            "4": 53,
+                            "5": "KNDUP13102633908"
+                        },
+                        {
+                            "0": 21,
+                            "1": "S195",
+                            "2": 2002,
+                            "3": "DODGE STRATUS SE 4A ASBWLSR",
+                            "4": 86,
+                            "5": "1B3EL46R22N193781"
+                        },
+                        {
+                            "0": 22,
+                            "1": "M215",
+                            "2": 2002,
+                            "3": "DODGE DAKOTA SLT 4X4 8A ASB",
+                            "4": 114,
+                            "5": "1B7HG48NX2S653783"
+                        },
+                        {
+                            "0": 23,
+                            "1": "Z095",
+                            "2": 2002,
+                            "3": "FORD EXPLORER EB 4X4 8A ASBW",
+                            "4": 82,
+                            "5": "1FMDU74W02UB72009"
+                        },
+                        {
+                            "0": 24,
+                            "1": "D135",
+                            "2": 2002,
+                            "3": "FORD EXPLORER XLS 4X4 6A ASB",
+                            "4": 110,
+                            "5": "1FMZU72E42UA13223"
+                        },
+                        {
+                            "0": 25,
+                            "1": "F195",
+                            "2": 2002,
+                            "3": "FORD F150XLT SPORT 4X2 6A A",
+                            "4": 81,
+                            "5": "1FTRX17282NA98776"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "AutoID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Location",
+                            "field": "1",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Year",
+                            "field": "2",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Type",
+                            "field": "3",
+                            "dataType": {
+                                "type": 17
+                            }
+                        },
+                        {
+                            "title": "Mileage",
+                            "field": "4",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "Vin",
+                            "field": "5",
+                            "dataType": {
+                                "type": 17
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 25 records retrieved in 1.979ms"
+                    },
+                    "totalRowCount": 25,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SELECT * FROM vehicles"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 72,
+                "end": 80,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "65523172-dee7-483e-c400-73d316c78e5c",
+                            "content": "OK, 0 records retrieved in 10.616ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 278
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 278,
+                            "length": 0
+                        },
+                        "contentStart": 277,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 81,
+                "end": 95,
+                "language": "mysql",
+                "result": {
+                    "type": "text",
+                    "text": [
+                        {
+                            "type": 4,
+                            "index": 0,
+                            "resultId": "9d57e10d-3015-4a21-9f39-d574d9836d93",
+                            "content": "OK, 12 rows affected in 1.347ms"
+                        }
+                    ]
+                },
+                "currentHeight": 28,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 542
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    },
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 542,
+                            "length": 2
+                        },
+                        "contentStart": 541,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": []
+        },
+        {
+            "state": {
+                "start": 96,
+                "end": 96,
+                "language": "mysql",
+                "result": {
+                    "type": "resultIds",
+                    "list": [
+                        "dfb8c1d8-f7fb-496d-af04-74ed5a044406"
+                    ]
+                },
+                "currentHeight": 36,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 18
+                        },
+                        "contentStart": 0,
+                        "state": 3
+                    }
+                ]
+            },
+            "data": [
+                {
+                    "tabId": "99f61ba6-2a6c-4b7e-bf33-25441952075a",
+                    "resultId": "dfb8c1d8-f7fb-496d-af04-74ed5a044406",
+                    "rows": [
+                        {
+                            "0": 101,
+                            "1": 1,
+                            "2": "2009-01-05",
+                            "3": "8000.00"
+                        },
+                        {
+                            "0": 101,
+                            "1": 1,
+                            "2": "2009-01-21",
+                            "3": "10200.00"
+                        },
+                        {
+                            "0": 105,
+                            "1": 1,
+                            "2": "2009-01-15",
+                            "3": "8500.00"
+                        },
+                        {
+                            "0": 107,
+                            "1": 1,
+                            "2": "2009-01-20",
+                            "3": "9500.00"
+                        },
+                        {
+                            "0": 103,
+                            "1": 2,
+                            "2": "2009-01-12",
+                            "3": "7100.00"
+                        },
+                        {
+                            "0": 103,
+                            "1": 3,
+                            "2": "2009-01-10",
+                            "3": "7000.00"
+                        },
+                        {
+                            "0": 102,
+                            "1": 5,
+                            "2": "2009-01-06",
+                            "3": "7800.00"
+                        },
+                        {
+                            "0": 109,
+                            "1": 5,
+                            "2": "2009-01-25",
+                            "3": "7200.00"
+                        },
+                        {
+                            "0": 110,
+                            "1": 10,
+                            "2": "2009-01-26",
+                            "3": "7250.00"
+                        },
+                        {
+                            "0": 106,
+                            "1": 13,
+                            "2": "2009-01-16",
+                            "3": "8800.00"
+                        },
+                        {
+                            "0": 108,
+                            "1": 17,
+                            "2": "2009-01-21",
+                            "3": "9700.00"
+                        },
+                        {
+                            "0": 104,
+                            "1": 21,
+                            "2": "2009-01-11",
+                            "3": "7300.00"
+                        }
+                    ],
+                    "columns": [
+                        {
+                            "title": "CustomerID",
+                            "field": "0",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "AutoID",
+                            "field": "1",
+                            "dataType": {
+                                "type": 4
+                            }
+                        },
+                        {
+                            "title": "BidDate",
+                            "field": "2",
+                            "dataType": {
+                                "type": 28
+                            }
+                        },
+                        {
+                            "title": "BidPrice",
+                            "field": "3",
+                            "dataType": {
+                                "type": 10
+                            }
+                        }
+                    ],
+                    "executionInfo": {
+                        "text": "OK, 12 records retrieved in 1ms"
+                    },
+                    "totalRowCount": 12,
+                    "hasMoreRows": false,
+                    "currentPage": 0,
+                    "index": 0,
+                    "sql": "SELECT * FROM Bids"
+                }
+            ]
+        },
+        {
+            "state": {
+                "start": 97,
+                "end": 97,
+                "language": "mysql",
+                "currentHeight": 180,
+                "statements": [
+                    {
+                        "delimiter": ";",
+                        "span": {
+                            "start": 0,
+                            "length": 0
+                        },
+                        "contentStart": 0,
+                        "state": 0
+                    }
+                ]
+            },
+            "data": []
+        }
+    ]
+}
